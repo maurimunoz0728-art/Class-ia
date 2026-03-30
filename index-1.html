@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ClaseIA</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c0f;
+  --surface: #111318;
+  --surface2: #181c24;
+  --border: #1e2530;
+  --accent: #00e5a0;
+  --accent2: #0077ff;
+  --accent3: #ff6b35;
+  --text: #e8edf5;
+  --muted: #5a6478;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none; z-index:0;
+}
+
+.app { position:relative; z-index:1; max-width:680px; margin:0 auto; padding:16px; padding-bottom:100px; }
+
+/* Header */
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; margin-bottom:16px;
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+}
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-icon {
+  width:36px; height:36px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:9px; display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+}
+.logo-text { font-size:18px; font-weight:800; letter-spacing:-0.5px; }
+.logo-text span { color:var(--accent); }
+.header-right { display:flex; align-items:center; gap:12px; }
+.timer {
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px; color:var(--accent); letter-spacing:1px;
+}
+.status-bar { display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); }
+.status-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); transition:all 0.3s; }
+.status-dot.recording { background:var(--accent); box-shadow:0 0 10px var(--accent); animation:pulse 1.5s infinite; }
+.status-dot.processing { background:var(--accent2); animation:pulse 0.8s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+
+/* Waveform */
+.waveform { display:flex; align-items:center; gap:2px; height:24px; }
+.wave-bar { width:3px; border-radius:2px; background:var(--accent); opacity:0.3; min-height:3px; transition:height 0.1s; }
+.wave-bar.active { opacity:1; }
+
+/* Botones principales */
+.controls {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:10px; margin-bottom:16px;
+}
+.btn {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:14px 18px; border-radius:12px;
+  font-family:'Syne',sans-serif; font-size:14px; font-weight:700;
+  cursor:pointer; border:none; transition:all 0.2s;
+  letter-spacing:0.2px; touch-action:manipulation;
+}
+.btn-record {
+  background:linear-gradient(135deg,var(--accent),#00c080);
+  color:#000; grid-column:span 2;
+  box-shadow:0 4px 20px rgba(0,229,160,0.25);
+  font-size:15px; padding:16px;
+}
+.btn-record:active { transform:scale(0.97); }
+.btn-record:disabled { opacity:0.4; }
+.btn-stop { background:transparent; color:var(--accent3); border:1px solid var(--accent3); }
+.btn-stop:disabled { opacity:0.3; }
+.btn-process {
+  background:linear-gradient(135deg,var(--accent2),#0055cc);
+  color:#fff; box-shadow:0 4px 16px rgba(0,119,255,0.2);
+}
+.btn-process:disabled { opacity:0.35; }
+.btn-process:active { transform:scale(0.97); }
+
+/* Tabs */
+.tabs {
+  display:flex; gap:6px; margin-bottom:14px;
+  overflow-x:auto; padding-bottom:4px;
+  scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar { display:none; }
+.tab {
+  flex-shrink:0; padding:8px 16px; border-radius:20px;
+  font-size:12px; font-weight:700; letter-spacing:0.3px;
+  cursor:pointer; border:1px solid var(--border);
+  background:var(--surface); color:var(--muted);
+  transition:all 0.2s; touch-action:manipulation;
+  white-space:nowrap;
+}
+.tab.active { background:var(--accent); color:#000; border-color:var(--accent); }
+
+/* Panels */
+.panel { display:none; }
+.panel.active { display:block; }
+
+.panel-box {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; overflow:hidden;
+}
+.panel-header {
+  padding:12px 16px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.panel-title { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--muted); }
+.panel-badge { font-family:'JetBrains Mono',monospace; font-size:10px; padding:2px 8px; border-radius:20px; background:var(--surface2); border:1px solid var(--border); color:var(--muted); }
+.panel-body { padding:14px 16px; min-height:200px; max-height:60vh; overflow-y:auto; }
+
+/* Transcripción */
+.transcript-line { padding:7px 0; border-bottom:1px solid var(--border); font-family:'Instrument Serif',serif; font-size:15px; line-height:1.7; }
+.transcript-line:last-child { border-bottom:none; }
+.transcript-line .ts { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--accent); margin-right:6px; opacity:0.6; }
+.interim-text { padding:7px 0; font-family:'Instrument Serif',serif; font-size:15px; line-height:1.7; color:var(--muted); font-style:italic; }
+
+/* Blocks */
+.note-block { margin-bottom:12px; padding:12px 14px; background:var(--surface2); border-radius:10px; border-left:3px solid var(--accent); font-size:13px; line-height:1.65; }
+.note-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:5px; }
+.summary-block { margin-bottom:12px; padding:12px 14px; background:var(--surface2); border-radius:10px; border-left:3px solid var(--accent2); font-size:13px; line-height:1.65; }
+.summary-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent2); margin-bottom:5px; }
+.question-block { margin-bottom:12px; padding:12px 14px; background:var(--surface2); border-radius:10px; border-left:3px solid var(--accent3); font-size:13px; line-height:1.65; }
+.question-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--accent3); margin-bottom:5px; }
+
+/* Concepts */
+.concepts-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.concept-tag {
+  padding:7px 13px; border-radius:20px; font-size:12px; font-weight:600;
+  background:var(--surface2); border:1px solid var(--border); cursor:pointer;
+  transition:all 0.2s; touch-action:manipulation;
+}
+.concept-tag.medical { border-color:rgba(0,229,160,0.3); }
+.concept-tag.pharma { border-color:rgba(0,119,255,0.3); color:#6ab0ff; }
+.concept-tag.anatomy { border-color:rgba(255,107,53,0.3); color:#ff9a75; }
+.concept-def {
+  width:100%; margin-top:4px; padding:10px 13px;
+  background:rgba(0,0,0,0.3); border-radius:8px;
+  font-size:12px; line-height:1.6; border:1px solid var(--border);
+}
+
+/* Empty state */
+.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; color:var(--muted); gap:8px; text-align:center; }
+.empty-icon { font-size:28px; opacity:0.4; }
+.empty-state p { font-size:13px; line-height:1.5; }
+
+/* Spinner */
+.spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,0.2); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Error */
+.error-msg { padding:12px; border-radius:8px; background:rgba(255,107,53,0.1); border:1px solid rgba(255,107,53,0.3); color:var(--accent3); font-size:13px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* Bottom process button fixed */
+.bottom-bar {
+  position:fixed; bottom:0; left:0; right:0;
+  padding:12px 16px 20px;
+  background:linear-gradient(to top, var(--bg) 70%, transparent);
+  z-index:10;
+  display:flex; gap:10px; justify-content:center;
+}
+.btn-process-fixed {
+  flex:1; max-width:400px;
+  background:linear-gradient(135deg,var(--accent2),#0055cc);
+  color:#fff; padding:15px;
+  border-radius:14px; border:none;
+  font-family:'Syne',sans-serif; font-size:15px; font-weight:700;
+  cursor:pointer; box-shadow:0 4px 20px rgba(0,119,255,0.3);
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  touch-action:manipulation;
+}
+.btn-process-fixed:disabled { opacity:0.35; }
+.btn-process-fixed:active { transform:scale(0.98); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🎓</div>
+      <div class="logo-text">Clase<span>IA</span></div>
+    </div>
+    <div class="header-right">
+      <div class="waveform" id="waveform"></div>
+      <div class="timer" id="timer">00:00</div>
+      <div class="status-bar">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Listo</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Controles de grabación -->
+  <div class="controls">
+    <button class="btn btn-record" id="btnRecord" onclick="startRecording()">🎙️ Iniciar grabación</button>
+    <button class="btn btn-stop" id="btnStop" onclick="stopRecording()" disabled>⏹ Detener</button>
+    <button class="btn btn-stop" style="border-color:var(--muted);color:var(--muted)" onclick="clearAll()">🗑 Limpiar</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('transcripcion',this)">📝 Transcripción</div>
+    <div class="tab" onclick="switchTab('apuntes',this)">📒 Apuntes</div>
+    <div class="tab" onclick="switchTab('resumen',this)">📋 Resumen</div>
+    <div class="tab" onclick="switchTab('conceptos',this)">🔑 Glosario</div>
+    <div class="tab" onclick="switchTab('preguntas',this)">❓ Preguntas</div>
+  </div>
+
+  <!-- Panel Transcripción -->
+  <div class="panel active" id="tab-transcripcion">
+    <div class="panel-box">
+      <div class="panel-header">
+        <div class="panel-title">📝 Transcripción en vivo</div>
+        <span class="panel-badge" id="wordCount">0 palabras</span>
+      </div>
+      <div class="panel-body" id="transcriptBody">
+        <div class="empty-state">
+          <div class="empty-icon">🎙️</div>
+          <p>Presiona <strong>Iniciar grabación</strong> para transcribir tu clase en tiempo real.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Apuntes -->
+  <div class="panel" id="tab-apuntes">
+    <div class="panel-box">
+      <div class="panel-header">
+        <div class="panel-title">📒 Apuntes estructurados</div>
+        <span class="panel-badge" id="notesCount">–</span>
+      </div>
+      <div class="panel-body" id="notesBody">
+        <div class="empty-state"><div class="empty-icon">📒</div><p>Presiona ⚡ Procesar para generar apuntes.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Resumen -->
+  <div class="panel" id="tab-resumen">
+    <div class="panel-box">
+      <div class="panel-header">
+        <div class="panel-title">📋 Resumen ejecutivo</div>
+        <span class="panel-badge" id="summaryBadge">–</span>
+      </div>
+      <div class="panel-body" id="summaryBody">
+        <div class="empty-state"><div class="empty-icon">📋</div><p>El resumen de la clase aparecerá aquí.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Conceptos -->
+  <div class="panel" id="tab-conceptos">
+    <div class="panel-box">
+      <div class="panel-header">
+        <div class="panel-title">🔑 Glosario técnico</div>
+        <span class="panel-badge" id="conceptsCount">–</span>
+      </div>
+      <div class="panel-body" id="conceptsBody">
+        <div class="empty-state"><div class="empty-icon">🔑</div><p>Los términos técnicos de la clase aparecerán aquí. Toca cada uno para ver la definición.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Preguntas -->
+  <div class="panel" id="tab-preguntas">
+    <div class="panel-box">
+      <div class="panel-header">
+        <div class="panel-title">❓ Preguntas de estudio</div>
+      </div>
+      <div class="panel-body" id="questionsBody">
+        <div class="empty-state"><div class="empty-icon">❓</div><p>Preguntas tipo examen generadas desde la clase.</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Botón fijo abajo -->
+<div class="bottom-bar">
+  <button class="btn-process-fixed" id="btnProcess" onclick="processAll()" disabled>
+    ⚡ Procesar con IA
+  </button>
+</div>
+
+<script>
+// ── ESTADO ──────────────────────────────────
+let recognition = null;
+let isRecording = false;
+let transcriptLines = [];
+let interimSpan = null;
+let timerInterval = null;
+let secondsElapsed = 0;
+let audioContext = null;
+let analyser = null;
+let micStream = null;
+let waveAnimFrame = null;
+
+// ── WAVEFORM ─────────────────────────────────
+const waveform = document.getElementById('waveform');
+const NUM_BARS = 14;
+for (let i = 0; i < NUM_BARS; i++) {
+  const b = document.createElement('div');
+  b.className = 'wave-bar';
+  b.style.height = '3px';
+  waveform.appendChild(b);
+}
+
+function animateWave() {
+  if (!analyser) return;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  const bars = waveform.querySelectorAll('.wave-bar');
+  const step = Math.floor(data.length / NUM_BARS);
+  bars.forEach((bar, i) => {
+    const val = data[i * step] || 0;
+    bar.style.height = Math.max(3, (val / 255) * 22) + 'px';
+    bar.classList.toggle('active', val > 20);
+  });
+  waveAnimFrame = requestAnimationFrame(animateWave);
+}
+
+function stopWave() {
+  if (waveAnimFrame) cancelAnimationFrame(waveAnimFrame);
+  waveform.querySelectorAll('.wave-bar').forEach(b => { b.style.height='3px'; b.classList.remove('active'); });
+}
+
+// ── TABS ─────────────────────────────────────
+function switchTab(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── TIMER ────────────────────────────────────
+function updateTimer() {
+  secondsElapsed++;
+  const m = String(Math.floor(secondsElapsed/60)).padStart(2,'0');
+  const s = String(secondsElapsed%60).padStart(2,'0');
+  document.getElementById('timer').textContent = m+':'+s;
+}
+
+function setStatus(state, text) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusText').textContent = text;
+}
+
+// ── SPEECH RECOGNITION ───────────────────────
+async function startRecording() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Usa Google Chrome para Android — es el único que soporta reconocimiento de voz.');
+    return;
+  }
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    audioContext.createMediaStreamSource(micStream).connect(analyser);
+    animateWave();
+  } catch(e) { console.warn('Waveform no disponible:', e); }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'es-ES';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  const body = document.getElementById('transcriptBody');
+
+  recognition.onstart = () => {
+    isRecording = true;
+    body.innerHTML = '';
+    // Indicador de escucha activa
+    const hint = document.createElement('div');
+    hint.id = 'listenHint';
+    hint.style.cssText = 'padding:10px 0;font-size:12px;color:var(--accent);font-family:JetBrains Mono,monospace;opacity:0.7';
+    hint.textContent = '🟢 Escuchando... habla ahora';
+    body.appendChild(hint);
+    interimSpan = document.createElement('div');
+    interimSpan.className = 'interim-text';
+    body.appendChild(interimSpan);
+    setStatus('recording', 'Grabando...');
+    document.getElementById('btnRecord').disabled = true;
+    document.getElementById('btnStop').disabled = false;
+    document.getElementById('btnProcess').disabled = true;
+    timerInterval = setInterval(updateTimer, 1000);
+  };
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const res = event.results[i];
+      if (res.isFinal) {
+        const text = res[0].transcript.trim();
+        if (text) {
+          transcriptLines.push({ text, time: secondsElapsed });
+          const line = document.createElement('div');
+          line.className = 'transcript-line';
+          const m = String(Math.floor(secondsElapsed/60)).padStart(2,'0');
+          const s = String(secondsElapsed%60).padStart(2,'0');
+          line.innerHTML = `<span class="ts">[${m}:${s}]</span>${text}`;
+          body.insertBefore(line, interimSpan);
+          body.scrollTop = body.scrollHeight;
+          updateWordCount();
+        }
+      } else { interim += res[0].transcript; }
+    }
+    interimSpan.textContent = interim;
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error === 'no-speech') { setStatus('recording', 'Sin voz...'); return; }
+    if (event.error === 'network') { setStatus('recording', 'Red, reintentando...'); return; }
+    if (event.error === 'not-allowed') {
+      alert('Permiso denegado.\n\nEn Chrome Android: toca los 3 puntos → Configuración del sitio → Micrófono → Permitir.');
+      stopRecording(); return;
+    }
+    const body = document.getElementById('transcriptBody');
+    const err = document.createElement('div');
+    err.className = 'error-msg';
+    err.textContent = '⚠️ Error: ' + event.error + ' — recarga la página e intenta de nuevo.';
+    body.appendChild(err);
+  };
+
+  recognition.onend = () => { if (isRecording) recognition.start(); };
+  recognition.start();
+}
+
+function stopRecording() {
+  isRecording = false;
+  if (recognition) { recognition.onend = null; recognition.stop(); }
+  if (timerInterval) clearInterval(timerInterval);
+  if (micStream) micStream.getTracks().forEach(t => t.stop());
+  if (audioContext) audioContext.close();
+  stopWave();
+  setStatus('', 'Detenido');
+  document.getElementById('btnRecord').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnProcess').disabled = transcriptLines.length === 0;
+}
+
+function updateWordCount() {
+  const total = transcriptLines.reduce((a,l) => a + l.text.split(' ').length, 0);
+  document.getElementById('wordCount').textContent = total + ' palabras';
+}
+
+// ── PROCESAR ─────────────────────────────────
+async function processAll() {
+  if (!transcriptLines.length) return;
+  const fullText = transcriptLines.map(l => l.text).join(' ');
+  const btn = document.getElementById('btnProcess');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Procesando...';
+  setStatus('processing', 'Procesando...');
+
+  const [notes, summary, concepts, questions] = await Promise.all([
+    callClaude(promptNotes(fullText)),
+    callClaude(promptSummary(fullText)),
+    callClaude(promptConcepts(fullText)),
+    callClaude(promptQuestions(fullText))
+  ]);
+
+  renderNotes(notes);
+  renderSummary(summary);
+  renderConcepts(concepts);
+  renderQuestions(questions);
+
+  btn.innerHTML = '✅ Procesado';
+  setStatus('', 'Listo');
+  setTimeout(() => {
+    btn.innerHTML = '⚡ Procesar con IA';
+    btn.disabled = false;
+  }, 3000);
+}
+
+async function callClaude(prompt) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role:'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    return data.content?.[0]?.text || '';
+  } catch(e) {
+    console.error(e);
+    return 'Error al conectar con la IA.';
+  }
+}
+
+// ── PROMPTS ──────────────────────────────────
+function promptNotes(t) {
+  return `Eres un asistente de estudio para un estudiante de enfermería en Chile.
+Genera apuntes estructurados en JSON. SOLO JSON, sin markdown, sin texto extra.
+Formato: {"sections":[{"titulo":"...","contenido":"..."}]}
+Transcripción: ${t}`;
+}
+function promptSummary(t) {
+  return `Resume esta transcripción de clase de enfermería en un párrafo ejecutivo claro, máximo 150 palabras en español. SOLO el texto del resumen.
+Transcripción: ${t}`;
+}
+function promptConcepts(t) {
+  return `Extrae los conceptos técnicos de esta clase de enfermería. SOLO JSON, sin markdown.
+Formato: {"conceptos":[{"termino":"...","definicion":"...","categoria":"medico|farmaco|anatomia|otro"}]}
+Máximo 12 conceptos. Transcripción: ${t}`;
+}
+function promptQuestions(t) {
+  return `Crea 4 preguntas de estudio tipo examen de esta clase de enfermería. SOLO JSON, sin markdown.
+Formato: {"preguntas":[{"pregunta":"...","pista":"..."}]}
+Transcripción: ${t}`;
+}
+
+// ── RENDER ────────────────────────────────────
+function renderNotes(raw) {
+  const body = document.getElementById('notesBody');
+  try {
+    const data = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if (!data.sections?.length) throw new Error();
+    body.innerHTML = '';
+    data.sections.forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'note-block';
+      el.innerHTML = `<div class="note-label">${s.titulo}</div>${s.contenido}`;
+      body.appendChild(el);
+    });
+    document.getElementById('notesCount').textContent = data.sections.length + ' secciones';
+  } catch { body.innerHTML = `<div class="note-block"><div class="note-label">Apuntes</div>${raw}</div>`; }
+}
+
+function renderSummary(raw) {
+  document.getElementById('summaryBody').innerHTML =
+    `<div class="summary-block"><div class="summary-label">Resumen</div>${raw}</div>`;
+  document.getElementById('summaryBadge').textContent = 'listo';
+}
+
+function renderConcepts(raw) {
+  const body = document.getElementById('conceptsBody');
+  try {
+    const data = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if (!data.conceptos?.length) throw new Error();
+    body.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'concepts-grid';
+    data.conceptos.forEach(c => {
+      const catClass = c.categoria==='farmaco'?'pharma':c.categoria==='anatomia'?'anatomy':'medical';
+      const tag = document.createElement('div');
+      tag.className = `concept-tag ${catClass}`;
+      tag.textContent = c.termino;
+      let open = false;
+      const def = document.createElement('div');
+      def.className = 'concept-def';
+      def.style.display = 'none';
+      def.innerHTML = `<strong style="color:var(--accent)">${c.termino}</strong><br>${c.definicion}`;
+      tag.onclick = () => {
+        open = !open;
+        def.style.display = open ? 'block' : 'none';
+      };
+      grid.appendChild(tag);
+      grid.appendChild(def);
+    });
+    body.appendChild(grid);
+    document.getElementById('conceptsCount').textContent = data.conceptos.length + ' términos';
+  } catch { body.innerHTML = `<div class="note-block">${raw}</div>`; }
+}
+
+function renderQuestions(raw) {
+  const body = document.getElementById('questionsBody');
+  try {
+    const data = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if (!data.preguntas?.length) throw new Error();
+    body.innerHTML = '';
+    data.preguntas.forEach((q, i) => {
+      const el = document.createElement('div');
+      el.className = 'question-block';
+      el.innerHTML = `<div class="question-label">Pregunta ${i+1}</div>${q.pregunta}<div style="margin-top:8px;font-size:11px;color:var(--muted)">💡 ${q.pista}</div>`;
+      body.appendChild(el);
+    });
+  } catch { body.innerHTML = `<div class="note-block">${raw}</div>`; }
+}
+
+// ── LIMPIAR ───────────────────────────────────
+function clearAll() {
+  transcriptLines = [];
+  secondsElapsed = 0;
+  document.getElementById('timer').textContent = '00:00';
+  document.getElementById('wordCount').textContent = '0 palabras';
+  ['notesCount','summaryBadge','conceptsCount'].forEach(id => document.getElementById(id).textContent='–');
+  document.getElementById('transcriptBody').innerHTML = '<div class="empty-state"><div class="empty-icon">🎙️</div><p>Presiona <strong>Iniciar grabación</strong> para comenzar.</p></div>';
+  document.getElementById('notesBody').innerHTML = '<div class="empty-state"><div class="empty-icon">📒</div><p>Presiona ⚡ Procesar para generar apuntes.</p></div>';
+  document.getElementById('summaryBody').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>El resumen aparecerá aquí.</p></div>';
+  document.getElementById('conceptsBody').innerHTML = '<div class="empty-state"><div class="empty-icon">🔑</div><p>El glosario técnico aparecerá aquí.</p></div>';
+  document.getElementById('questionsBody').innerHTML = '<div class="empty-state"><div class="empty-icon">❓</div><p>Las preguntas de estudio aparecerán aquí.</p></div>';
+  document.getElementById('btnProcess').disabled = true;
+  setStatus('', 'Listo');
+}
+</script>
+</body>
+</html>
